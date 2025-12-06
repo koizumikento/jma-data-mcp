@@ -44,11 +44,11 @@ Add to your Claude Desktop config (`claude_desktop_config.json`):
 ### Available Tools
 
 #### Station Tools
-- `get_station` - Get station by code
-- `search_stations_by_name` - Search stations by name
-- `search_stations_by_location` - Search stations within radius
-- `get_stations_by_type` - Get stations by type (A-F)
-- `list_all_stations` - List all stations with pagination
+- `get_station_info` - Get station by code
+- `search_stations` - Search stations by name
+- `search_nearby_stations` - Search stations within radius
+- `get_stations_of_type` - Get stations by type (A-F)
+- `list_stations` - List all stations with pagination
 
 #### Weather Tools
 - `get_current_weather` - Get current weather observation from AMeDAS

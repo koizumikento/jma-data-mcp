@@ -1,8 +1,9 @@
 """Weather data fetching from JMA APIs."""
 
-import httpx
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+
+import httpx
 
 # Japan Standard Time (UTC+9)
 JST = timezone(timedelta(hours=9))
