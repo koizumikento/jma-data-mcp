@@ -214,6 +214,224 @@ async def fetch_forecast(area_code: str) -> dict:
         return response.json()
 
 
+async def fetch_historical_amedas_data(
+    station_code: str,
+    target_time: datetime
+) -> dict:
+    """
+    Fetch historical AMeDAS data for a specific time.
+
+    Args:
+        station_code: Station code (e.g., '44132' for Tokyo)
+        target_time: Target datetime (available for approximately past 1-2 weeks)
+
+    Returns:
+        Dictionary with observation data for the specified time
+    """
+    # Round to 10-minute intervals
+    target_time = target_time.replace(
+        minute=(target_time.minute // 10) * 10,
+        second=0,
+        microsecond=0
+    )
+
+    time_str = format_time_for_api(target_time)
+    url = f'https://www.jma.go.jp/bosai/amedas/data/map/{time_str}.json'
+
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url, timeout=30.0)
+        response.raise_for_status()
+        raw_data = response.json()
+
+    station_data = raw_data.get(station_code)
+    if station_data is None:
+        return {
+            "error": f"No data found for station {station_code} at {target_time.isoformat()}",
+            "observation_time": target_time.isoformat()
+        }
+
+    result = {
+        "observation_time": target_time.isoformat(),
+        "observation_time_jst": target_time.strftime('%Y-%m-%d %H:%M JST'),
+        "station_code": station_code,
+        "data": _parse_station_data(station_code, station_data)
+    }
+
+    return result
+
+
+async def fetch_time_series_data(
+    station_code: str,
+    hours: int = 24,
+    interval_minutes: int = 60
+) -> dict:
+    """
+    Fetch time series data for a station.
+
+    Args:
+        station_code: Station code (e.g., '44132' for Tokyo)
+        hours: Number of hours to fetch (default: 24, max recommended: 168 for ~1 week)
+        interval_minutes: Interval between data points in minutes (10, 30, or 60)
+
+    Returns:
+        Dictionary with time series data
+    """
+    if interval_minutes not in [10, 30, 60]:
+        interval_minutes = 60
+
+    # Limit hours to prevent too many requests
+    hours = min(hours, 168)  # Max 1 week
+
+    start_time = get_latest_data_time()
+    data_points = []
+    errors = []
+
+    # Calculate number of points
+    num_points = (hours * 60) // interval_minutes
+
+    async with httpx.AsyncClient() as client:
+        for i in range(num_points):
+            target_time = start_time - timedelta(minutes=i * interval_minutes)
+            time_str = format_time_for_api(target_time)
+            url = f'https://www.jma.go.jp/bosai/amedas/data/map/{time_str}.json'
+
+            try:
+                response = await client.get(url, timeout=10.0)
+                response.raise_for_status()
+                raw_data = response.json()
+
+                station_data = raw_data.get(station_code)
+                if station_data:
+                    parsed = _parse_station_data(station_code, station_data)
+                    parsed["observation_time"] = target_time.isoformat()
+                    parsed["observation_time_jst"] = target_time.strftime('%Y-%m-%d %H:%M')
+                    data_points.append(parsed)
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code == 404:
+                    errors.append({
+                        "time": target_time.isoformat(),
+                        "error": "Data not available (past retention period)"
+                    })
+                    break  # Stop if we hit the retention limit
+                else:
+                    errors.append({
+                        "time": target_time.isoformat(),
+                        "error": str(e)
+                    })
+            except Exception as e:
+                errors.append({
+                    "time": target_time.isoformat(),
+                    "error": str(e)
+                })
+
+    # Reverse to chronological order
+    data_points.reverse()
+
+    return {
+        "station_code": station_code,
+        "requested_hours": hours,
+        "interval_minutes": interval_minutes,
+        "data_points": len(data_points),
+        "time_series": data_points,
+        "errors": errors if errors else None
+    }
+
+
+def _parse_station_data(code: str, data: dict) -> dict:
+    """Parse raw station data into structured format."""
+    station_data = {"code": code}
+
+    # Temperature (℃)
+    if "temp" in data:
+        station_data["temperature"] = {
+            "value": parse_observation_value(data["temp"]),
+            "unit": "℃"
+        }
+
+    # Humidity (%)
+    if "humidity" in data:
+        station_data["humidity"] = {
+            "value": parse_observation_value(data["humidity"]),
+            "unit": "%"
+        }
+
+    # Pressure (hPa)
+    if "pressure" in data:
+        station_data["pressure"] = {
+            "value": parse_observation_value(data["pressure"]),
+            "unit": "hPa"
+        }
+
+    # Sea level pressure (hPa)
+    if "normalPressure" in data:
+        station_data["sea_level_pressure"] = {
+            "value": parse_observation_value(data["normalPressure"]),
+            "unit": "hPa"
+        }
+
+    # Wind
+    if "wind" in data:
+        wind_speed = parse_observation_value(data["wind"])
+        wind_dir_code = parse_observation_value(data.get("windDirection", [None, None]))
+        wind_dir = None
+        wind_dir_ja = None
+        if wind_dir_code is not None:
+            wind_dir_code = int(wind_dir_code)
+            wind_dir = WIND_DIRECTIONS.get(wind_dir_code)
+            wind_dir_ja = WIND_DIRECTIONS_JA.get(wind_dir_code)
+
+        station_data["wind"] = {
+            "speed": wind_speed,
+            "speed_unit": "m/s",
+            "direction": wind_dir,
+            "direction_ja": wind_dir_ja,
+            "direction_code": wind_dir_code
+        }
+
+    # Precipitation
+    precipitation = {}
+    if "precipitation10m" in data:
+        precipitation["10min"] = parse_observation_value(data["precipitation10m"])
+    if "precipitation1h" in data:
+        precipitation["1h"] = parse_observation_value(data["precipitation1h"])
+    if "precipitation3h" in data:
+        precipitation["3h"] = parse_observation_value(data["precipitation3h"])
+    if "precipitation24h" in data:
+        precipitation["24h"] = parse_observation_value(data["precipitation24h"])
+    if precipitation:
+        station_data["precipitation"] = {
+            **precipitation,
+            "unit": "mm"
+        }
+
+    # Sunshine
+    if "sun1h" in data:
+        station_data["sunshine"] = {
+            "1h": parse_observation_value(data["sun1h"]),
+            "unit": "hours"
+        }
+
+    # Snow
+    snow = {}
+    if "snow" in data:
+        snow["depth"] = parse_observation_value(data["snow"])
+    if "snow1h" in data:
+        snow["1h"] = parse_observation_value(data["snow1h"])
+    if "snow6h" in data:
+        snow["6h"] = parse_observation_value(data["snow6h"])
+    if "snow12h" in data:
+        snow["12h"] = parse_observation_value(data["snow12h"])
+    if "snow24h" in data:
+        snow["24h"] = parse_observation_value(data["snow24h"])
+    if snow:
+        station_data["snow"] = {
+            **snow,
+            "unit": "cm"
+        }
+
+    return station_data
+
+
 # Area codes for major prefectures
 AREA_CODES = {
     "hokkaido_sapporo": "016000",

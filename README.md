@@ -8,6 +8,8 @@ Japan Meteorological Agency (JMA) data MCP server.
 - 1286 observation stations across Japan
 - Search by station code, name, or location
 - Real-time weather observation data (temperature, humidity, wind, precipitation, etc.)
+- Historical weather data (past 1-2 weeks)
+- Time series data for trend analysis
 - Weather forecast by prefecture
 
 ## Data Source
@@ -53,6 +55,10 @@ Add to your Claude Desktop config (`claude_desktop_config.json`):
 - `get_weather_by_location` - Get weather from nearest station to coordinates
 - `get_forecast` - Get weather forecast for a prefecture
 - `list_prefectures` - List available prefecture codes
+
+#### Historical Data Tools
+- `get_historical_weather` - Get weather data for a specific past date/time (available for ~1-2 weeks)
+- `get_weather_time_series` - Get time series data for trend analysis (hourly data up to 1 week)
 
 ## Weather Data
 
@@ -107,6 +113,29 @@ Arguments: {"lat": 35.6812, "lon": 139.7671}
 Tool: get_forecast
 Arguments: {"prefecture": "tokyo"}
 ```
+
+### Get historical weather data
+
+```
+Tool: get_historical_weather
+Arguments: {"station_code": "44132", "datetime": "2025-12-01 12:00"}
+```
+
+### Get time series data (last 24 hours)
+
+```
+Tool: get_weather_time_series
+Arguments: {"station_code": "44132", "hours": 24, "interval_minutes": 60}
+```
+
+## Data Availability
+
+| Data Type | Availability |
+|-----------|--------------|
+| Real-time observation | ~30 min delay |
+| Historical data | Past 1-2 weeks |
+| Time series | Up to 168 hours (1 week) |
+| Forecast | 7 days ahead |
 
 ## License
 

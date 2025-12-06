@@ -1,15 +1,19 @@
 """Tests for weather data functions."""
 
 import pytest
+from datetime import datetime, timedelta
 from jma_data_mcp.weather import (
     get_latest_data_time,
     format_time_for_api,
     parse_observation_value,
     fetch_amedas_data,
     fetch_forecast,
+    fetch_historical_amedas_data,
+    fetch_time_series_data,
     WIND_DIRECTIONS,
     WIND_DIRECTIONS_JA,
     AREA_CODES,
+    JST,
 )
 
 
@@ -89,3 +93,48 @@ async def test_fetch_forecast():
     assert isinstance(data, list)
     # Forecast data should be a list
     assert len(data) > 0
+
+
+@pytest.mark.asyncio
+async def test_fetch_historical_amedas_data():
+    """Test fetching historical AMeDAS data."""
+    # Fetch data from 1 hour ago
+    target_time = datetime.now(JST) - timedelta(hours=1)
+    data = await fetch_historical_amedas_data("44132", target_time)
+
+    assert "observation_time" in data
+    assert "station_code" in data
+    assert data["station_code"] == "44132"
+
+    # Should have data (not error)
+    if "error" not in data:
+        assert "data" in data
+        assert "temperature" in data["data"] or "precipitation" in data["data"]
+
+
+@pytest.mark.asyncio
+async def test_fetch_time_series_data():
+    """Test fetching time series data."""
+    data = await fetch_time_series_data("44132", hours=3, interval_minutes=60)
+
+    assert "station_code" in data
+    assert data["station_code"] == "44132"
+    assert "time_series" in data
+    assert "data_points" in data
+    # Should have at least some data points
+    assert data["data_points"] > 0
+    assert len(data["time_series"]) > 0
+
+    # Each data point should have observation_time
+    for point in data["time_series"]:
+        assert "observation_time" in point
+
+
+@pytest.mark.asyncio
+async def test_fetch_time_series_data_with_interval():
+    """Test fetching time series data with different intervals."""
+    data = await fetch_time_series_data("44132", hours=2, interval_minutes=30)
+
+    assert "interval_minutes" in data
+    assert data["interval_minutes"] == 30
+    assert "time_series" in data

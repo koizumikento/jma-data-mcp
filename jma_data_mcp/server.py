@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+from datetime import datetime
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent
@@ -16,7 +17,10 @@ from .stations import (
 from .weather import (
     fetch_amedas_data,
     fetch_forecast,
+    fetch_historical_amedas_data,
+    fetch_time_series_data,
     AREA_CODES,
+    JST,
 )
 
 
@@ -168,6 +172,50 @@ async def list_tools() -> list[Tool]:
                 "properties": {}
             }
         ),
+        # Historical data tools
+        Tool(
+            name="get_historical_weather",
+            description="Get historical weather data for a specific date and time. Data is available for approximately the past 1-2 weeks.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "station_code": {
+                        "type": "string",
+                        "description": "Station code (e.g., '44132' for Tokyo)"
+                    },
+                    "datetime": {
+                        "type": "string",
+                        "description": "Target datetime in ISO format (e.g., '2025-12-01T12:00:00') or 'YYYY-MM-DD HH:MM' format. Time is in JST."
+                    }
+                },
+                "required": ["station_code", "datetime"]
+            }
+        ),
+        Tool(
+            name="get_weather_time_series",
+            description="Get time series weather data for a station. Useful for analyzing weather trends over hours or days.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "station_code": {
+                        "type": "string",
+                        "description": "Station code (e.g., '44132' for Tokyo)"
+                    },
+                    "hours": {
+                        "type": "integer",
+                        "description": "Number of hours to fetch (default: 24, max: 168 for ~1 week)",
+                        "default": 24
+                    },
+                    "interval_minutes": {
+                        "type": "integer",
+                        "description": "Interval between data points in minutes (10, 30, or 60)",
+                        "default": 60,
+                        "enum": [10, 30, 60]
+                    }
+                },
+                "required": ["station_code"]
+            }
+        ),
     ]
 
 
@@ -286,6 +334,63 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             result = json.dumps({
                 "prefectures": AREA_CODES
             }, ensure_ascii=False, indent=2)
+
+        elif name == "get_historical_weather":
+            station_code = arguments["station_code"]
+            datetime_str = arguments["datetime"]
+
+            # Parse datetime string
+            try:
+                # Try ISO format first
+                if "T" in datetime_str:
+                    target_time = datetime.fromisoformat(datetime_str.replace("Z", "+00:00"))
+                else:
+                    # Try common formats
+                    for fmt in ["%Y-%m-%d %H:%M", "%Y-%m-%d %H:%M:%S", "%Y/%m/%d %H:%M"]:
+                        try:
+                            target_time = datetime.strptime(datetime_str, fmt)
+                            break
+                        except ValueError:
+                            continue
+                    else:
+                        raise ValueError(f"Could not parse datetime: {datetime_str}")
+
+                # Add JST timezone if naive
+                if target_time.tzinfo is None:
+                    target_time = target_time.replace(tzinfo=JST)
+
+            except Exception as e:
+                result = json.dumps({
+                    "error": f"Invalid datetime format: {e}",
+                    "hint": "Use ISO format (e.g., '2025-12-01T12:00:00') or 'YYYY-MM-DD HH:MM'"
+                }, ensure_ascii=False, indent=2)
+            else:
+                historical_data = await fetch_historical_amedas_data(station_code, target_time)
+
+                # Add station info
+                station_info = get_station(station_code)
+                if station_info:
+                    historical_data["station_info"] = station_info
+
+                result = json.dumps(historical_data, ensure_ascii=False, indent=2)
+
+        elif name == "get_weather_time_series":
+            station_code = arguments["station_code"]
+            hours = arguments.get("hours", 24)
+            interval_minutes = arguments.get("interval_minutes", 60)
+
+            time_series_data = await fetch_time_series_data(
+                station_code,
+                hours=hours,
+                interval_minutes=interval_minutes
+            )
+
+            # Add station info
+            station_info = get_station(station_code)
+            if station_info:
+                time_series_data["station_info"] = station_info
+
+            result = json.dumps(time_series_data, ensure_ascii=False, indent=2)
 
         else:
             result = f"Unknown tool: {name}"
