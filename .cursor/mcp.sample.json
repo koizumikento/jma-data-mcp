@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "jma-data-mcp": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/koizumikento/jma-data-mcp.git",
+        "jma-data-mcp"
+      ]
+    }
+  }
+}
