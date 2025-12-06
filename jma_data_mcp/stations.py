@@ -4,7 +4,6 @@ import json
 from pathlib import Path
 from typing import Optional
 
-
 DATA_DIR = Path(__file__).parent / "data"
 STATIONS_FILE = DATA_DIR / "amedas_stations.json"
 

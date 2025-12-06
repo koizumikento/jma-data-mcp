@@ -6,8 +6,9 @@ readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.10"
 dependencies = [
-    "mcp>=1.0.0",
-    "httpx>=0.27.0",
+    "fastmcp>=2.3.3",
+    "pydantic-settings>=2.12.0",
+    "httpx>=0.28.0",
 ]
 
 [project.scripts]
@@ -24,4 +25,24 @@ packages = ["jma_data_mcp"]
 dev-dependencies = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",
+    "ruff>=0.8.0",
+    "mypy>=1.0.0",
 ]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+ignore_missing_imports = true

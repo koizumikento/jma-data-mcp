@@ -1,13 +1,12 @@
 """Tests for station data functions."""
 
-import pytest
 from jma_data_mcp.stations import (
-    load_stations,
-    get_station,
-    search_stations_by_name,
-    search_stations_by_location,
-    get_stations_by_type,
     get_all_stations,
+    get_station,
+    get_stations_by_type,
+    load_stations,
+    search_stations_by_location,
+    search_stations_by_name,
 )
 
 
