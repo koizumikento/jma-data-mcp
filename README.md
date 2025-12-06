@@ -7,11 +7,16 @@ Japan Meteorological Agency (JMA) data MCP server.
 - AMeDAS (Automated Meteorological Data Acquisition System) station data
 - 1286 observation stations across Japan
 - Search by station code, name, or location
+- Real-time weather observation data (temperature, humidity, wind, precipitation, etc.)
+- Historical weather data (past 1-2 weeks)
+- Time series data for trend analysis
+- Weather forecast by prefecture
 
 ## Data Source
 
 - AMeDAS station data: https://www.jma.go.jp/bosai/amedas/
-- CSV data: https://www.data.jma.go.jp/stats/data/mdrr/docs/csv_dl_readme.html
+- Real-time observation: https://www.jma.go.jp/bosai/amedas/
+- Weather forecast: https://www.jma.go.jp/bosai/forecast/
 
 ## Installation
 
@@ -38,11 +43,42 @@ Add to your Claude Desktop config (`claude_desktop_config.json`):
 
 ### Available Tools
 
-- `get_station` - Get station by code
-- `search_stations_by_name` - Search stations by name
-- `search_stations_by_location` - Search stations within radius
-- `get_stations_by_type` - Get stations by type (A-F)
-- `list_all_stations` - List all stations with pagination
+#### Station Tools
+- `get_station_info` - Get station by code
+- `search_stations` - Search stations by name
+- `search_nearby_stations` - Search stations within radius
+- `get_stations_of_type` - Get stations by type (A-F)
+- `list_stations` - List all stations with pagination
+
+#### Weather Tools
+- `get_current_weather` - Get current weather observation from AMeDAS
+- `get_weather_by_location` - Get weather from nearest station to coordinates
+- `get_forecast` - Get weather forecast for a prefecture
+- `list_prefectures` - List available prefecture codes
+
+#### Historical Data Tools
+- `get_historical_weather` - Get weather data for a specific past date/time (available for ~1-2 weeks)
+- `get_weather_time_series` - Get time series data for trend analysis (hourly data up to 1 week)
+
+## Weather Data
+
+The `get_current_weather` tool returns:
+
+| Field | Description | Unit |
+|-------|-------------|------|
+| temperature | Air temperature | ℃ |
+| humidity | Relative humidity | % |
+| pressure | Station pressure | hPa |
+| sea_level_pressure | Sea level pressure | hPa |
+| wind.speed | Wind speed | m/s |
+| wind.direction | Wind direction | 16 directions |
+| precipitation.10min | 10-min precipitation | mm |
+| precipitation.1h | 1-hour precipitation | mm |
+| precipitation.3h | 3-hour precipitation | mm |
+| precipitation.24h | 24-hour precipitation | mm |
+| sunshine.1h | 1-hour sunshine | hours |
+| snow.depth | Snow depth | cm |
+| snow.1h/6h/12h/24h | Snowfall | cm |
 
 ## Station Types
 
@@ -54,6 +90,52 @@ Add to your Claude Desktop config (`claude_desktop_config.json`):
 | D | Rain gauge station (雨量観測所) |
 | E | Snow depth station (積雪観測所) |
 | F | Regional rain station (地域雨量観測所) |
+
+## Examples
+
+### Get current weather in Tokyo
+
+```
+Tool: get_current_weather
+Arguments: {"station_code": "44132"}
+```
+
+### Get weather by coordinates
+
+```
+Tool: get_weather_by_location
+Arguments: {"lat": 35.6812, "lon": 139.7671}
+```
+
+### Get forecast for Tokyo
+
+```
+Tool: get_forecast
+Arguments: {"prefecture": "tokyo"}
+```
+
+### Get historical weather data
+
+```
+Tool: get_historical_weather
+Arguments: {"station_code": "44132", "datetime": "2025-12-01 12:00"}
+```
+
+### Get time series data (last 24 hours)
+
+```
+Tool: get_weather_time_series
+Arguments: {"station_code": "44132", "hours": 24, "interval_minutes": 60}
+```
+
+## Data Availability
+
+| Data Type | Availability |
+|-----------|--------------|
+| Real-time observation | ~30 min delay |
+| Historical data | Past 1-2 weeks |
+| Time series | Up to 168 hours (1 week) |
+| Forecast | 7 days ahead |
 
 ## License
 
