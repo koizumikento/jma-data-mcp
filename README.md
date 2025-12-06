@@ -21,27 +21,109 @@ Japan Meteorological Agency (JMA) data MCP server.
 ## Installation
 
 ```bash
-uv pip install -e .
+uv tool install git+https://github.com/koizumikento/jma-data-mcp.git
 ```
 
-## Usage
+Or install locally:
 
-### As MCP Server
+```bash
+git clone https://github.com/koizumikento/jma-data-mcp.git
+cd jma-data-mcp
+uv sync
+```
 
-Add to your Claude Desktop config (`claude_desktop_config.json`):
+## MCP Server Configuration
+
+### Claude Desktop
+
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
+
+**Installed version:**
 
 ```json
 {
   "mcpServers": {
-    "jma-data": {
-      "command": "uv",
-      "args": ["run", "jma-data-mcp"]
+    "jma-data-mcp": {
+      "command": "jma-data-mcp"
     }
   }
 }
 ```
 
-### Available Tools
+**Direct from GitHub:**
+
+```json
+{
+  "mcpServers": {
+    "jma-data-mcp": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/koizumikento/jma-data-mcp.git",
+        "jma-data-mcp"
+      ]
+    }
+  }
+}
+```
+
+**Local development:**
+
+```json
+{
+  "mcpServers": {
+    "jma-data-mcp": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "/path/to/jma-data-mcp",
+        "jma-data-mcp"
+      ]
+    }
+  }
+}
+```
+
+### Cursor
+
+Add to `.cursor/mcp.json` in your project root:
+
+```json
+{
+  "mcpServers": {
+    "jma-data-mcp": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/koizumikento/jma-data-mcp.git",
+        "jma-data-mcp"
+      ]
+    }
+  }
+}
+```
+
+### Cline
+
+Add to Cline MCP settings:
+
+```json
+{
+  "mcpServers": {
+    "jma-data-mcp": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/koizumikento/jma-data-mcp.git",
+        "jma-data-mcp"
+      ]
+    }
+  }
+}
+```
+
+## Available Tools
 
 #### Station Tools
 - `get_station_info` - Get station by code
