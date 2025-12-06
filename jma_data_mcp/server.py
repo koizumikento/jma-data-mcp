@@ -298,7 +298,7 @@ async def get_weather_time_series(
     return time_series_data
 
 
-def main():
+def main() -> None:
     """Run the MCP server."""
     mcp.run()
 

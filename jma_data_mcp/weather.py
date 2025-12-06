@@ -1,7 +1,7 @@
 """Weather data fetching from JMA APIs."""
 
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Any, Optional
 
 import httpx
 
@@ -39,20 +39,20 @@ def format_time_for_api(dt: datetime) -> str:
     return dt.strftime('%Y%m%d%H%M00')
 
 
-def parse_observation_value(value: list) -> Optional[float]:
+def parse_observation_value(value: Optional[list[float | int | None]]) -> Optional[float]:
     """Parse observation value from [value, quality_flag] format."""
     if value is None or len(value) < 2:
         return None
     val, quality = value
     if val is None or quality is None:
         return None
-    return val
+    return float(val) if val is not None else None
 
 
 async def fetch_amedas_data(
     station_code: Optional[str] = None,
     data_time: Optional[datetime] = None
-) -> dict:
+) -> dict[str, Any]:
     """
     Fetch AMeDAS observation data from JMA API.
 
@@ -75,7 +75,7 @@ async def fetch_amedas_data(
         raw_data = response.json()
 
     # Parse and format the data
-    result = {
+    result: dict[str, Any] = {
         "observation_time": data_time.isoformat(),
         "observation_time_jst": data_time.strftime('%Y-%m-%d %H:%M JST'),
         "stations": {}
@@ -87,7 +87,7 @@ async def fetch_amedas_data(
         if data is None:
             continue
 
-        station_data = {"code": code}
+        station_data: dict[str, Any] = {"code": code}
 
         # Temperature (℃)
         if "temp" in data:
@@ -182,7 +182,7 @@ async def fetch_amedas_data(
     return result
 
 
-async def fetch_weather_warnings() -> dict:
+async def fetch_weather_warnings() -> dict[str, Any]:
     """
     Fetch current weather warnings/advisories from JMA.
 
@@ -194,10 +194,11 @@ async def fetch_weather_warnings() -> dict:
     async with httpx.AsyncClient() as client:
         response = await client.get(url, timeout=30.0)
         response.raise_for_status()
-        return response.json()
+        data: dict[str, Any] = response.json()
+        return data
 
 
-async def fetch_forecast(area_code: str) -> dict:
+async def fetch_forecast(area_code: str) -> list[dict[str, Any]]:
     """
     Fetch weather forecast for a specific area.
 
@@ -205,20 +206,21 @@ async def fetch_forecast(area_code: str) -> dict:
         area_code: JMA area code (e.g., "130000" for Tokyo)
 
     Returns:
-        Dictionary with forecast data
+        List of forecast data
     """
     url = f"https://www.jma.go.jp/bosai/forecast/data/forecast/{area_code}.json"
 
     async with httpx.AsyncClient() as client:
         response = await client.get(url, timeout=30.0)
         response.raise_for_status()
-        return response.json()
+        data: list[dict[str, Any]] = response.json()
+        return data
 
 
 async def fetch_historical_amedas_data(
     station_code: str,
     target_time: datetime
-) -> dict:
+) -> dict[str, Any]:
     """
     Fetch historical AMeDAS data for a specific time.
 
@@ -265,7 +267,7 @@ async def fetch_time_series_data(
     station_code: str,
     hours: int = 24,
     interval_minutes: int = 60
-) -> dict:
+) -> dict[str, Any]:
     """
     Fetch time series data for a station.
 
@@ -338,9 +340,9 @@ async def fetch_time_series_data(
     }
 
 
-def _parse_station_data(code: str, data: dict) -> dict:
+def _parse_station_data(code: str, data: dict[str, Any]) -> dict[str, Any]:
     """Parse raw station data into structured format."""
-    station_data = {"code": code}
+    station_data: dict[str, Any] = {"code": code}
 
     # Temperature (℃)
     if "temp" in data:
