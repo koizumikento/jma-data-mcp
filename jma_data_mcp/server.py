@@ -1,6 +1,7 @@
 """MCP server for JMA data."""
 
 import asyncio
+import json
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent
@@ -12,6 +13,11 @@ from .stations import (
     get_stations_by_type,
     get_all_stations,
 )
+from .weather import (
+    fetch_amedas_data,
+    fetch_forecast,
+    AREA_CODES,
+)
 
 
 server = Server("jma-data-mcp")
@@ -21,6 +27,7 @@ server = Server("jma-data-mcp")
 async def list_tools() -> list[Tool]:
     """List available tools."""
     return [
+        # Station tools
         Tool(
             name="get_station",
             description="Get AMeDAS station information by station code",
@@ -106,66 +113,188 @@ async def list_tools() -> list[Tool]:
                 }
             }
         ),
+        # Weather data tools
+        Tool(
+            name="get_current_weather",
+            description="Get current weather observation data from AMeDAS stations. Returns temperature, humidity, pressure, wind, precipitation, etc.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "station_code": {
+                        "type": "string",
+                        "description": "Station code (e.g., '44132' for Tokyo). If not specified, returns data for all stations."
+                    }
+                }
+            }
+        ),
+        Tool(
+            name="get_weather_by_location",
+            description="Get current weather from the nearest AMeDAS station to given coordinates",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "lat": {
+                        "type": "number",
+                        "description": "Latitude in decimal degrees"
+                    },
+                    "lon": {
+                        "type": "number",
+                        "description": "Longitude in decimal degrees"
+                    }
+                },
+                "required": ["lat", "lon"]
+            }
+        ),
+        Tool(
+            name="get_forecast",
+            description="Get weather forecast for a prefecture",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "prefecture": {
+                        "type": "string",
+                        "description": "Prefecture name in English (e.g., 'tokyo', 'osaka', 'hokkaido_sapporo')",
+                        "enum": list(AREA_CODES.keys())
+                    }
+                },
+                "required": ["prefecture"]
+            }
+        ),
+        Tool(
+            name="list_prefectures",
+            description="List all available prefecture codes for weather forecast",
+            inputSchema={
+                "type": "object",
+                "properties": {}
+            }
+        ),
     ]
 
 
 @server.call_tool()
 async def call_tool(name: str, arguments: dict) -> list[TextContent]:
     """Handle tool calls."""
-    import json
+    result = ""
 
-    if name == "get_station":
-        code = arguments["code"]
-        station = get_station(code)
-        if station:
-            result = json.dumps(station, ensure_ascii=False, indent=2)
+    try:
+        if name == "get_station":
+            code = arguments["code"]
+            station = get_station(code)
+            if station:
+                result = json.dumps(station, ensure_ascii=False, indent=2)
+            else:
+                result = f"Station with code '{code}' not found."
+
+        elif name == "search_stations_by_name":
+            search_name = arguments["name"]
+            stations = search_stations_by_name(search_name)
+            result = json.dumps({
+                "count": len(stations),
+                "stations": stations
+            }, ensure_ascii=False, indent=2)
+
+        elif name == "search_stations_by_location":
+            lat = arguments["lat"]
+            lon = arguments["lon"]
+            radius_km = arguments.get("radius_km", 50.0)
+            stations = search_stations_by_location(lat, lon, radius_km)
+            result = json.dumps({
+                "count": len(stations),
+                "search_center": {"lat": lat, "lon": lon},
+                "radius_km": radius_km,
+                "stations": stations
+            }, ensure_ascii=False, indent=2)
+
+        elif name == "get_stations_by_type":
+            station_type = arguments["station_type"]
+            stations = get_stations_by_type(station_type)
+            result = json.dumps({
+                "count": len(stations),
+                "type": station_type,
+                "stations": stations
+            }, ensure_ascii=False, indent=2)
+
+        elif name == "list_all_stations":
+            limit = arguments.get("limit", 100)
+            offset = arguments.get("offset", 0)
+            all_stations = get_all_stations()
+            paginated = all_stations[offset:offset + limit]
+            result = json.dumps({
+                "total": len(all_stations),
+                "offset": offset,
+                "limit": limit,
+                "count": len(paginated),
+                "stations": paginated
+            }, ensure_ascii=False, indent=2)
+
+        elif name == "get_current_weather":
+            station_code = arguments.get("station_code")
+            weather_data = await fetch_amedas_data(station_code)
+
+            if station_code:
+                # Single station - include station info
+                station_info = get_station(station_code)
+                if station_info and station_code in weather_data["stations"]:
+                    weather_data["station_info"] = station_info
+                    weather_data["weather"] = weather_data["stations"][station_code]
+                    del weather_data["stations"]
+
+            result = json.dumps(weather_data, ensure_ascii=False, indent=2)
+
+        elif name == "get_weather_by_location":
+            lat = arguments["lat"]
+            lon = arguments["lon"]
+
+            # Find nearest station
+            nearby = search_stations_by_location(lat, lon, radius_km=100)
+            if not nearby:
+                result = json.dumps({
+                    "error": "No stations found within 100km of the specified location"
+                }, ensure_ascii=False, indent=2)
+            else:
+                nearest = nearby[0]
+                station_code = nearest["code"]
+
+                # Get weather data
+                weather_data = await fetch_amedas_data(station_code)
+
+                response = {
+                    "observation_time": weather_data["observation_time"],
+                    "observation_time_jst": weather_data["observation_time_jst"],
+                    "station": nearest,
+                    "weather": weather_data["stations"].get(station_code, {})
+                }
+                result = json.dumps(response, ensure_ascii=False, indent=2)
+
+        elif name == "get_forecast":
+            prefecture = arguments["prefecture"]
+            area_code = AREA_CODES.get(prefecture)
+            if not area_code:
+                result = json.dumps({
+                    "error": f"Unknown prefecture: {prefecture}",
+                    "available": list(AREA_CODES.keys())
+                }, ensure_ascii=False, indent=2)
+            else:
+                forecast_data = await fetch_forecast(area_code)
+                result = json.dumps({
+                    "prefecture": prefecture,
+                    "area_code": area_code,
+                    "forecast": forecast_data
+                }, ensure_ascii=False, indent=2)
+
+        elif name == "list_prefectures":
+            result = json.dumps({
+                "prefectures": AREA_CODES
+            }, ensure_ascii=False, indent=2)
+
         else:
-            result = f"Station with code '{code}' not found."
+            result = f"Unknown tool: {name}"
 
-    elif name == "search_stations_by_name":
-        search_name = arguments["name"]
-        stations = search_stations_by_name(search_name)
+    except Exception as e:
         result = json.dumps({
-            "count": len(stations),
-            "stations": stations
+            "error": str(e),
+            "tool": name
         }, ensure_ascii=False, indent=2)
-
-    elif name == "search_stations_by_location":
-        lat = arguments["lat"]
-        lon = arguments["lon"]
-        radius_km = arguments.get("radius_km", 50.0)
-        stations = search_stations_by_location(lat, lon, radius_km)
-        result = json.dumps({
-            "count": len(stations),
-            "search_center": {"lat": lat, "lon": lon},
-            "radius_km": radius_km,
-            "stations": stations
-        }, ensure_ascii=False, indent=2)
-
-    elif name == "get_stations_by_type":
-        station_type = arguments["station_type"]
-        stations = get_stations_by_type(station_type)
-        result = json.dumps({
-            "count": len(stations),
-            "type": station_type,
-            "stations": stations
-        }, ensure_ascii=False, indent=2)
-
-    elif name == "list_all_stations":
-        limit = arguments.get("limit", 100)
-        offset = arguments.get("offset", 0)
-        all_stations = get_all_stations()
-        paginated = all_stations[offset:offset + limit]
-        result = json.dumps({
-            "total": len(all_stations),
-            "offset": offset,
-            "limit": limit,
-            "count": len(paginated),
-            "stations": paginated
-        }, ensure_ascii=False, indent=2)
-
-    else:
-        result = f"Unknown tool: {name}"
 
     return [TextContent(type="text", text=result)]
 
