@@ -1,6 +1,6 @@
 [project]
 name = "jma-data-mcp"
-version = "0.1.0"
+version = "0.2.0"
 description = "MCP server for Japan Meteorological Agency (JMA) data"
 readme = "README.md"
 license = { text = "MIT" }
@@ -16,7 +16,7 @@ dependencies = [
 Homepage = "https://github.com/koizumikento/jma-data-mcp"
 
 [project.scripts]
-jma-data-mcp = "jma_data_mcp.server:main"
+jma-data-mcp = "jma_data_mcp.entrypoint:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -31,6 +31,7 @@ dev-dependencies = [
     "pytest-asyncio>=0.23.0",
     "ruff>=0.8.0",
     "mypy>=1.0.0",
+    "pyinstaller>=6.0.0",
 ]
 
 [tool.ruff]
@@ -43,6 +44,9 @@ ignore = ["E501"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+markers = [
+    "integration: tests requiring live JMA API access",
+]
 
 [tool.mypy]
 python_version = "3.10"

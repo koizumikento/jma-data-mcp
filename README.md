@@ -32,6 +32,61 @@ cd jma-data-mcp
 uv sync
 ```
 
+## CLI Usage
+
+`jma-data-mcp` now supports both MCP server mode and CLI mode:
+
+- No arguments: start MCP server (backward compatible)
+- `serve`: start MCP server explicitly
+- Subcommands: run CLI and print JSON output
+
+### Examples
+
+```bash
+# Backward-compatible MCP server startup
+jma-data-mcp
+
+# Explicit MCP server startup
+jma-data-mcp serve
+
+# Station info
+jma-data-mcp station get --code 44132
+
+# Nearby stations
+jma-data-mcp station nearby --lat 35.6812 --lon 139.7671 --radius-km 10
+
+# Current weather
+jma-data-mcp weather current --station-code 44132
+
+# Forecast
+jma-data-mcp forecast get --prefecture tokyo
+
+# Historical data
+jma-data-mcp history get --station-code 44132 --target-datetime "2025-12-01 12:00"
+```
+
+### CLI Command List
+
+- `jma-data-mcp serve`
+- `jma-data-mcp station get --code <code>`
+- `jma-data-mcp station search --name <name>`
+- `jma-data-mcp station nearby --lat <lat> --lon <lon> [--radius-km <float>]`
+- `jma-data-mcp station type --station-type <A|B|C|D|E|F>`
+- `jma-data-mcp station list [--limit <int>] [--offset <int>]`
+- `jma-data-mcp weather current [--station-code <code>]`
+- `jma-data-mcp weather by-location --lat <lat> --lon <lon>`
+- `jma-data-mcp forecast get --prefecture <name>`
+- `jma-data-mcp forecast list-prefectures`
+- `jma-data-mcp history get --station-code <code> --target-datetime "<datetime>"`
+- `jma-data-mcp history series --station-code <code> [--hours <int>] [--interval-minutes <10|30|60>]`
+
+## Windows Executable
+
+Windows standalone executable is published in GitHub Releases:
+
+- Asset: `jma-data-mcp.exe`
+- Checksum file: `SHA256SUMS.txt`
+
 ## MCP Server Configuration
 
 ### Claude Desktop
@@ -218,6 +273,20 @@ Arguments: {"station_code": "44132", "hours": 24, "interval_minutes": 60}
 | Historical data | Past 1-2 weeks |
 | Time series | Up to 168 hours (1 week) |
 | Forecast | 7 days ahead |
+
+## Release
+
+Push a version tag to trigger automated Windows build and GitHub Release upload:
+
+```bash
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+Release workflow publishes:
+
+- `jma-data-mcp.exe`
+- `SHA256SUMS.txt`
 
 ## License
 

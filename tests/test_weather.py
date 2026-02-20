@@ -62,6 +62,7 @@ def test_parse_observation_value():
 
 
 @pytest.mark.asyncio
+@pytest.mark.integration
 async def test_fetch_amedas_data_single_station():
     """Test fetching AMeDAS data for a single station."""
     data = await fetch_amedas_data(station_code="44132")  # Tokyo
@@ -78,6 +79,7 @@ async def test_fetch_amedas_data_single_station():
 
 
 @pytest.mark.asyncio
+@pytest.mark.integration
 async def test_fetch_amedas_data_all_stations():
     """Test fetching AMeDAS data for all stations."""
     data = await fetch_amedas_data()
@@ -88,6 +90,7 @@ async def test_fetch_amedas_data_all_stations():
 
 
 @pytest.mark.asyncio
+@pytest.mark.integration
 async def test_fetch_forecast():
     """Test fetching weather forecast."""
     data = await fetch_forecast("130000")  # Tokyo
@@ -98,6 +101,7 @@ async def test_fetch_forecast():
 
 
 @pytest.mark.asyncio
+@pytest.mark.integration
 async def test_fetch_historical_amedas_data():
     """Test fetching historical AMeDAS data."""
     # Fetch data from 1 hour ago
@@ -115,6 +119,7 @@ async def test_fetch_historical_amedas_data():
 
 
 @pytest.mark.asyncio
+@pytest.mark.integration
 async def test_fetch_time_series_data():
     """Test fetching time series data."""
     data = await fetch_time_series_data("44132", hours=3, interval_minutes=60)
@@ -133,6 +138,7 @@ async def test_fetch_time_series_data():
 
 
 @pytest.mark.asyncio
+@pytest.mark.integration
 async def test_fetch_time_series_data_with_interval():
     """Test fetching time series data with different intervals."""
     data = await fetch_time_series_data("44132", hours=2, interval_minutes=30)
