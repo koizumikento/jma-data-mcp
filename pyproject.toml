@@ -1,6 +1,6 @@
 [project]
 name = "jma-data-mcp"
-version = "0.2.0"
+version = "0.2.1"
 description = "MCP server for Japan Meteorological Agency (JMA) data"
 readme = "README.md"
 license = { text = "MIT" }

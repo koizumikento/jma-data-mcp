@@ -115,7 +115,11 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def _print_json(payload: JsonDict) -> None:
-    print(json.dumps(payload, ensure_ascii=False, indent=2))
+    try:
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+    except UnicodeEncodeError:
+        # Fallback for terminals with legacy encodings on Windows CI.
+        print(json.dumps(payload, ensure_ascii=True, indent=2))
 
 
 def _normalize_exit_code(code: object) -> int:
