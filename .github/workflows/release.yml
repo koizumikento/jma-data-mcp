@@ -67,5 +67,5 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            release-assets/jma-data-mcp.exe
+            release-assets/dist/jma-data-mcp.exe
             release-assets/SHA256SUMS.txt
