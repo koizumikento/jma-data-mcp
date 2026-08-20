@@ -4,6 +4,9 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -17,13 +20,29 @@ jobs:
           python-version: "3.12"
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@v4
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
 
       - name: Install dependencies
-        run: uv sync --dev
+        run: uv sync --frozen
 
       - name: Ruff
         run: uv run ruff check .
 
       - name: Pytest (exclude integration)
         run: uv run pytest -m "not integration"
+
+      - name: Build
+        run: uv build
+
+      - name: Verify clean wheel install
+        shell: bash
+        run: |
+          WHEEL=$(find dist -name '*.whl' -print -quit)
+          uv run --isolated --no-project --with "$WHEEL" python - <<'PY'
+          import asyncio
+          from jma_data_mcp.server import mcp
+          from jma_data_mcp.stations import load_stations
+
+          assert len(load_stations()) == 1286
+          assert len(asyncio.run(mcp.list_tools())) == 11
+          PY

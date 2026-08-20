@@ -5,19 +5,19 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
-from collections.abc import Awaitable, Callable
-from typing import Any
+from collections.abc import Callable, Coroutine
+from typing import Any, NoReturn
 
 from . import server
 
 JsonDict = dict[str, Any]
-Handler = Callable[[argparse.Namespace], Awaitable[JsonDict]]
+Handler = Callable[[argparse.Namespace], Coroutine[Any, Any, JsonDict]]
 
 
 class JsonArgumentParser(argparse.ArgumentParser):
     """Argument parser that raises exceptions instead of exiting on errors."""
 
-    def error(self, message: str) -> None:
+    def error(self, message: str) -> NoReturn:
         raise ValueError(message)
 
 

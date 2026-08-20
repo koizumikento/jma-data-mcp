@@ -22,9 +22,6 @@ venv/
 .pytest_cache/
 .coverage
 
-# UV
-uv.lock
-
 # OS
 .DS_Store
 mcp.json

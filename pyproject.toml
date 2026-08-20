@@ -1,13 +1,13 @@
 [project]
 name = "jma-data-mcp"
-version = "0.2.1"
+version = "0.3.0"
 description = "MCP server for Japan Meteorological Agency (JMA) data"
 readme = "README.md"
 license = { text = "MIT" }
 authors = [{ name = "straydog" }]
 requires-python = ">=3.10"
 dependencies = [
-    "fastmcp>=2.3.3",
+    "fastmcp>=3.4.7,<4",
     "pydantic-settings>=2.12.0",
     "httpx>=0.28.0",
 ]

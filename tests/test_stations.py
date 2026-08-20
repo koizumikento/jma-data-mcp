@@ -14,6 +14,9 @@ def test_load_stations():
     """Test loading station data."""
     stations = load_stations()
     assert len(stations) == 1286
+    assert "35256" not in stations
+    assert stations["35257"]["name"]["ja"] == "上田沢"
+    assert stations["54506"]["location"]["alt"] == 61
 
 
 def test_get_station():
