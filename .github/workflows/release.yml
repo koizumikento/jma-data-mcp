@@ -44,7 +44,7 @@ jobs:
           "$($hash.Hash.ToLower())  jma-data-mcp.exe" | Out-File -FilePath SHA256SUMS.txt -Encoding ascii
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: windows-exe
           path: |
