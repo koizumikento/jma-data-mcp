@@ -25,3 +25,7 @@ venv/
 # OS
 .DS_Store
 mcp.json
+node_modules/
+.env
+.env.local
+.mypy_cache/

@@ -37,6 +37,12 @@ MCPクライアント設定例:
 
 過去データは気象庁側で提供される直近約1〜2週間、時系列は最大168時間を対象とします。
 
+## Sitesでの実行
+
+[`sites/`](sites/README.md) に認証付き `POST /mcp` Worker ESM adapterとbuild設定があります。
+全11 toolsは既存Python backendで実行します。Sitesとは別にHTTPS接続可能なPython hostが必要です。
+stdio・CLI・Python libraryはそのまま利用できます。設定、secret名、再現手順、検証範囲は上記手順を参照してください。
+
 ## データ出典・利用条件
 
 出典: [気象庁ホームページ](https://www.jma.go.jp/)
@@ -56,7 +62,12 @@ uv run mypy jma_data_mcp
 uv run pytest -m "not integration"
 uv run python scripts/check_amedas_snapshot.py
 uv build
+npm --prefix sites test
+npm --prefix sites run build
+npm --prefix sites run validate
 ```
+
+Sites契約検証にはNode 22+も必要です。テストではJMA取得をfixtureで置き換え、使用したloopbackサーバーを停止します。
 
 観測所スナップショットの差分チェックは週次でも実行されます。
 
