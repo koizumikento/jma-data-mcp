@@ -19,6 +19,10 @@ from mcp_types import DiscoverResult
 from jma_data_mcp import server, sites_backend, weather
 
 ROOT = Path(__file__).resolve().parents[1]
+JMA_NETWORK_TOOLS = {
+    "get_current_weather", "get_weather_by_location", "get_forecast",
+    "get_historical_weather", "get_weather_time_series",
+}
 
 
 def test_backend_requires_runtime_secret(monkeypatch):
@@ -126,6 +130,13 @@ async def test_worker_backend_contract(monkeypatch, mode):
             local_tools, remote_tools = await local.list_tools(), await remote.list_tools()
             assert len(remote_tools) == 11
             assert [t.model_dump() for t in remote_tools] == [t.model_dump() for t in local_tools]
+            assert JMA_NETWORK_TOOLS <= {tool.name for tool in remote_tools}
+            for tool in remote_tools:
+                assert tool.annotations is not None
+                assert tool.annotations.read_only_hint is True
+                assert tool.annotations.destructive_hint is False
+                assert tool.annotations.idempotent_hint is True
+                assert tool.annotations.open_world_hint is (tool.name in JMA_NETWORK_TOOLS)
             for name, arguments in cases:
                 retention_enabled = arguments.get("hours") != 168
                 expected = await local.call_tool(name, arguments, raise_on_error=False)
@@ -160,9 +171,36 @@ async def test_worker_backend_contract(monkeypatch, mode):
             discovery = {"jsonrpc": "2.0", "id": 998, "method": "server/discover", "params": {"_meta": modern["params"]["_meta"]}}
             discovered = await http_client.post(worker_url, headers=anonymous_headers, json=discovery)
             assert discovered.status_code == 200
+            wire_result = discovered.json()["result"]
+            assert wire_result["supportedVersions"] == ["2026-07-28"]
+            assert wire_result["resultType"] == "complete"
+            assert wire_result["_meta"]["io.modelcontextprotocol/serverInfo"]["name"] == "jma-data-mcp"
             discovery_result = DiscoverResult.model_validate(discovered.json()["result"])
             assert "2026-07-28" in discovery_result.supported_versions
             assert discovery_result.capabilities.tools is not None
+            list_headers = {
+                "accept": "application/json, text/event-stream", "mcp-method": "tools/list",
+                "mcp-protocol-version": "2026-07-28" if mode == "auto" else "2025-11-25",
+            }
+            list_params = {"_meta": modern["params"]["_meta"]} if mode == "auto" else {}
+            listed = await http_client.post(worker_url, headers=list_headers, json={
+                "jsonrpc": "2.0", "id": 997, "method": "tools/list", "params": list_params,
+            })
+            assert listed.status_code == 200
+            listed_result = listed.json()["result"]
+            if mode == "auto":
+                assert listed_result["resultType"] == "complete"
+            assert len(listed_result["tools"]) == 11
+            for tool in listed_result["tools"]:
+                assert tool["annotations"] == {
+                    "readOnlyHint": True, "destructiveHint": False, "idempotentHint": True,
+                    "openWorldHint": tool["name"] in JMA_NETWORK_TOOLS,
+                }
+            call_headers = {**headers, "mcp-method": "tools/call"}
+            called = await http_client.post(worker_url, headers=call_headers, json=modern)
+            assert called.status_code == 200
+            assert called.json()["result"]["resultType"] == "complete"
+            assert called.json()["result"]["structuredContent"]["code"] == "44132"
             anonymous_headers.update({"mcp-method": "tools/call", "mcp-name": "get_station_info"})
             denied = await http_client.post(worker_url, headers=anonymous_headers, json=modern)
             assert denied.status_code == 401

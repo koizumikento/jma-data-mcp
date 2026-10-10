@@ -7,6 +7,12 @@ All eleven tools, schemas, descriptions, structured/text results, station
 snapshot, pagination, defaults, domain errors, units, timestamps and JMA source
 data stay owned by `jma_data_mcp/server.py`, `stations.py` and `weather.py`.
 No JMA API key, writable storage, D1, R2 or new Node dependencies are needed.
+All eleven tools declare the standard MCP `readOnlyHint: true`,
+`destructiveHint: false`, and `idempotentHint: true` annotations. The six
+station/area snapshot tools use `openWorldHint: false`; the five weather tools
+use `openWorldHint: true` because they fetch public JMA HTTP data. These are
+client hints, not authorization controls; changing observations do not make
+repeated reads mutate the environment.
 
 ## Why a backend
 
@@ -47,6 +53,11 @@ Both modern (`2026-07-28`) and legacy handshake clients are checked with the
 locked FastMCP 4.0.11 / MCP Python SDK 2.2.0. Discovery metadata and all tool
 results are compared against the original in-process server. This verifies
 transport/contract behavior, not model routing or a hosted client connection.
+The real ASGI tests also assert the serialized discovery keys
+`supportedVersions`, `resultType: "complete"`, and server identity metadata,
+plus all eleven tool annotations on modern and legacy `tools/list` responses
+and a modern `tools/call` result. A bare `server/discover` with no modern
+request metadata does not establish whether the modern protocol works.
 
 | Fixture task | Related calls and assertion |
 | --- | --- |
