@@ -59,8 +59,23 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen
 
+      - name: Setup Node for Sites contract checks
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+
+      - name: Sites Worker checks and build
+        working-directory: sites
+        run: |
+          npm test
+          npm run build
+          npm run validate
+
       - name: Ruff
         run: uv run ruff check .
+
+      - name: Mypy
+        run: uv run mypy jma_data_mcp
 
       - name: Pytest (exclude integration)
         run: uv run pytest -m "not integration"
