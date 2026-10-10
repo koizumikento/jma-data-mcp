@@ -21,6 +21,24 @@ test("identity is required for data calls; service access does not create identi
   } finally { mock.restoreAll(); }
 });
 
+test("server discovery reaches the backend without identity while tool calls remain denied", async () => {
+  const discovery = { jsonrpc: "2.0", id: 2, method: "server/discover", params: {} };
+  const upstream = mock.method(globalThis, "fetch", async (url, init) => {
+    assert.equal(String(url), env.JMA_BACKEND_URL);
+    assert.deepEqual(JSON.parse(new TextDecoder().decode(init.body)), discovery);
+    assert.equal(init.headers.has("oai-authenticated-user-id"), false);
+    assert.equal(init.headers.get("authorization"), `Bearer ${env.JMA_BACKEND_TOKEN}`);
+    return Response.json({ jsonrpc: "2.0", id: 2, result: { supported_versions: ["2026-07-28"], capabilities: { tools: {} } } });
+  });
+  try {
+    const response = await worker.fetch(request(discovery), env);
+    assert.equal(response.status, 200);
+    assert.deepEqual((await response.json()).result.supported_versions, ["2026-07-28"]);
+    assert.equal((await worker.fetch(request(call), env)).status, 401);
+    assert.equal(upstream.mock.callCount(), 1);
+  } finally { mock.restoreAll(); }
+});
+
 test("discovery and calls preserve body, protocol headers, paging, and result bytes", async () => {
   const result = JSON.stringify({ jsonrpc: "2.0", id: 1, result: { structuredContent: { temperature: { value: 0, unit: "℃" }, missing: null } } });
   const upstream = mock.method(globalThis, "fetch", async (url, init) => {

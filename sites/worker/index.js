@@ -1,5 +1,5 @@
 const PUBLIC_METHODS = new Set([
-  "initialize", "ping", "tools/list", "resources/list", "resources/templates/list",
+  "initialize", "server/discover", "ping", "tools/list", "resources/list", "resources/templates/list",
   "prompts/list", "notifications/initialized", "notifications/cancelled",
 ]);
 const MAX_BODY_BYTES = 64 * 1024;

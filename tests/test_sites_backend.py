@@ -14,6 +14,7 @@ import pytest
 import uvicorn
 from fastmcp import Client
 from fastmcp.client.transports import StreamableHttpTransport
+from mcp_types import DiscoverResult
 
 from jma_data_mcp import server, sites_backend, weather
 
@@ -120,6 +121,8 @@ async def test_worker_backend_contract(monkeypatch, mode):
             ("get_historical_weather", {"station_code": "44132", "target_datetime": "2026-10-10 09:00"}),
         ]
         async with Client(server.mcp, mode=mode) as local, Client(transport, mode=mode, timeout=30) as remote:
+            if mode == "auto":
+                assert remote.protocol_version == "2026-07-28"
             local_tools, remote_tools = await local.list_tools(), await remote.list_tools()
             assert len(remote_tools) == 11
             assert [t.model_dump() for t in remote_tools] == [t.model_dump() for t in local_tools]
@@ -152,6 +155,17 @@ async def test_worker_backend_contract(monkeypatch, mode):
                 "mcp-method": "tools/list", "mcp-name": "get_station_info",
                 "oai-authenticated-user-id": "fixture-owner",
             }
+            anonymous_headers = {k: v for k, v in headers.items() if k not in {"oai-authenticated-user-id", "mcp-name"}}
+            anonymous_headers["mcp-method"] = "server/discover"
+            discovery = {"jsonrpc": "2.0", "id": 998, "method": "server/discover", "params": {"_meta": modern["params"]["_meta"]}}
+            discovered = await http_client.post(worker_url, headers=anonymous_headers, json=discovery)
+            assert discovered.status_code == 200
+            discovery_result = DiscoverResult.model_validate(discovered.json()["result"])
+            assert "2026-07-28" in discovery_result.supported_versions
+            assert discovery_result.capabilities.tools is not None
+            anonymous_headers.update({"mcp-method": "tools/call", "mcp-name": "get_station_info"})
+            denied = await http_client.post(worker_url, headers=anonymous_headers, json=modern)
+            assert denied.status_code == 401
             mismatch = await http_client.post(worker_url, headers=headers, json=modern)
             assert mismatch.status_code == 400
             assert mismatch.json()["error"]["code"] == -32020
