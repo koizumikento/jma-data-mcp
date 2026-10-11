@@ -1,0 +1,11 @@
+{
+  "44132": {
+    "temp": [0, 0], "humidity": [null, 0], "pressure": [1000, null],
+    "normalPressure": [1010, 0], "wind": [0, 0], "windDirection": [16, 0],
+    "precipitation10m": [0, 0], "precipitation1h": [2.5, 0],
+    "precipitation3h": [null, 0], "precipitation24h": [10, 0],
+    "sun1h": [0, 0], "snow": [0, 0], "snow1h": [null, 0],
+    "snow6h": [1, 0], "snow12h": [2, 0], "snow24h": [3, 0]
+  },
+  "44116": { "temp": [-1.5, 0], "wind": [2.5, 0], "windDirection": [0, 0] }
+}

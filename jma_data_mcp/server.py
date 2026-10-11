@@ -22,10 +22,11 @@ from .weather import (
 )
 
 mcp = FastMCP("jma-data-mcp")
+READ_ONLY_ANNOTATIONS = {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True}
 
 
 # Station tools
-@mcp.tool()
+@mcp.tool(annotations={**READ_ONLY_ANNOTATIONS, "openWorldHint": False})
 async def get_station_info(code: str) -> dict:
     """Get AMeDAS station information by station code.
 
@@ -41,7 +42,7 @@ async def get_station_info(code: str) -> dict:
     return {"error": f"Station with code '{code}' not found."}
 
 
-@mcp.tool()
+@mcp.tool(annotations={**READ_ONLY_ANNOTATIONS, "openWorldHint": False})
 async def search_stations(name: str) -> dict:
     """Search AMeDAS stations by name (Japanese, Kana, or English).
 
@@ -55,7 +56,7 @@ async def search_stations(name: str) -> dict:
     return {"count": len(stations), "stations": stations}
 
 
-@mcp.tool()
+@mcp.tool(annotations={**READ_ONLY_ANNOTATIONS, "openWorldHint": False})
 async def search_nearby_stations(
     lat: float,
     lon: float,
@@ -80,7 +81,7 @@ async def search_nearby_stations(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations={**READ_ONLY_ANNOTATIONS, "openWorldHint": False})
 async def get_stations_of_type(
     station_type: str,
 ) -> dict:
@@ -99,7 +100,7 @@ async def get_stations_of_type(
     return {"count": len(stations), "type": station_type, "stations": stations}
 
 
-@mcp.tool()
+@mcp.tool(annotations={**READ_ONLY_ANNOTATIONS, "openWorldHint": False})
 async def list_stations(
     limit: int = 100,
     offset: int = 0,
@@ -125,7 +126,7 @@ async def list_stations(
 
 
 # Weather tools
-@mcp.tool()
+@mcp.tool(annotations={**READ_ONLY_ANNOTATIONS, "openWorldHint": True})
 async def get_current_weather(
     station_code: Optional[str] = None,
 ) -> dict:
@@ -150,7 +151,7 @@ async def get_current_weather(
     return weather_data
 
 
-@mcp.tool()
+@mcp.tool(annotations={**READ_ONLY_ANNOTATIONS, "openWorldHint": True})
 async def get_weather_by_location(
     lat: float,
     lon: float,
@@ -180,7 +181,7 @@ async def get_weather_by_location(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations={**READ_ONLY_ANNOTATIONS, "openWorldHint": True})
 async def get_forecast(prefecture: str) -> dict:
     """Get weather forecast for a prefecture.
 
@@ -205,7 +206,7 @@ async def get_forecast(prefecture: str) -> dict:
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations={**READ_ONLY_ANNOTATIONS, "openWorldHint": False})
 async def list_prefectures() -> dict:
     """List all available prefecture codes for weather forecast.
 
@@ -216,7 +217,7 @@ async def list_prefectures() -> dict:
 
 
 # Historical data tools
-@mcp.tool()
+@mcp.tool(annotations={**READ_ONLY_ANNOTATIONS, "openWorldHint": True})
 async def get_historical_weather(
     station_code: str,
     target_datetime: str,
@@ -264,7 +265,7 @@ async def get_historical_weather(
     return historical_data
 
 
-@mcp.tool()
+@mcp.tool(annotations={**READ_ONLY_ANNOTATIONS, "openWorldHint": True})
 async def get_weather_time_series(
     station_code: str,
     hours: int = 24,
