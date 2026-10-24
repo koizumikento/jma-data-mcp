@@ -13,6 +13,14 @@ from fastmcp.client.transports import StdioTransport
 from jma_data_mcp import cli, entrypoint, server, weather
 
 
+def test_cli_version_matches_package_metadata(capsys):
+    from importlib.metadata import version
+
+    assert entrypoint.main(["--version"]) == 0
+    assert capsys.readouterr().out.strip() == f"jma-data-mcp {version('jma-data-mcp')}"
+    assert server.mcp.version == version("jma-data-mcp")
+
+
 def test_entrypoint_no_args_calls_server(monkeypatch):
     called = {"count": 0}
 

@@ -8,7 +8,7 @@ import json
 from collections.abc import Callable, Coroutine
 from typing import Any, NoReturn
 
-from . import server
+from . import __version__, server
 
 JsonDict = dict[str, Any]
 Handler = Callable[[argparse.Namespace], Coroutine[Any, Any, JsonDict]]
@@ -26,6 +26,7 @@ def _build_parser() -> argparse.ArgumentParser:
         prog="jma-data-mcp",
         description="CLI for Japan Meteorological Agency (JMA) data",
     )
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     subparsers = parser.add_subparsers(dest="resource", required=True)
 
     station_parser = subparsers.add_parser("station", help="Station data commands")
