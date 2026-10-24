@@ -15,17 +15,22 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v7
         with:
-          python-version: "3.12"
+          python-version-file: ".python-version"
 
       - name: Setup uv
         uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
 
       - name: Install dependencies
-        run: uv sync --frozen
+        run: |
+          uv lock --check
+          uv sync --frozen
+
+      - name: Verify build trust bundle
+        run: uv run --no-sync pytest tests/test_build_security.py
 
       - name: Build Windows executable
         run: >
-          uv run pyinstaller --onefile --name jma-data-mcp
+          uv run --no-sync pyinstaller --clean --onefile --name jma-data-mcp
           --collect-data jma_data_mcp
           --copy-metadata fastmcp
           jma_data_mcp/__main__.py
@@ -34,8 +39,11 @@ jobs:
         shell: pwsh
         run: |
           dist\jma-data-mcp.exe --help
-          dist\jma-data-mcp.exe station get --code 44132 | Out-File -FilePath station.json -Encoding utf8
-          Get-Content station.json | ConvertFrom-Json | Out-Null
+          if ($LASTEXITCODE -ne 0) { throw "Executable help failed" }
+          $output = dist\jma-data-mcp.exe station get --code 44132
+          if ($LASTEXITCODE -ne 0) { throw "Station lookup failed" }
+          $station = $output | ConvertFrom-Json
+          if ($station.code -ne "44132") { throw "Station data missing or incorrect" }
 
       - name: Create SHA256 checksum
         shell: pwsh
