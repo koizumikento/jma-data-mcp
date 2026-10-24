@@ -28,22 +28,24 @@ jobs:
       - name: Verify build trust bundle
         run: uv run --no-sync pytest tests/test_build_security.py
 
+      - name: Verify release tag matches package version
+        run: >
+          uv run --no-sync python -c
+          "import os; from importlib.metadata import version;
+          assert os.environ['GITHUB_REF_NAME'] == 'v' + version('jma-data-mcp')"
+
       - name: Build Windows executable
         run: >
           uv run --no-sync pyinstaller --clean --onefile --name jma-data-mcp
           --collect-data jma_data_mcp
           --copy-metadata fastmcp
+          --copy-metadata jma-data-mcp
           jma_data_mcp/__main__.py
 
       - name: Smoke test executable
-        shell: pwsh
-        run: |
-          dist\jma-data-mcp.exe --help
-          if ($LASTEXITCODE -ne 0) { throw "Executable help failed" }
-          $output = dist\jma-data-mcp.exe station get --code 44132
-          if ($LASTEXITCODE -ne 0) { throw "Station lookup failed" }
-          $station = $output | ConvertFrom-Json
-          if ($station.code -ne "44132") { throw "Station data missing or incorrect" }
+        run: >
+          uv run --no-sync python scripts/verify_windows_bundle.py dist/jma-data-mcp.exe
+          --https --report build-verification.json
 
       - name: Create SHA256 checksum
         shell: pwsh
@@ -55,9 +57,11 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: windows-exe
+          if-no-files-found: error
           path: |
             dist/jma-data-mcp.exe
             SHA256SUMS.txt
+            build-verification.json
 
   release:
     runs-on: ubuntu-latest
@@ -74,6 +78,8 @@ jobs:
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v3
         with:
+          fail_on_unmatched_files: true
           files: |
             release-assets/dist/jma-data-mcp.exe
             release-assets/SHA256SUMS.txt
+            release-assets/build-verification.json

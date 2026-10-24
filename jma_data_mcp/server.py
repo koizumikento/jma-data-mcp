@@ -5,6 +5,7 @@ from typing import Optional
 
 from fastmcp import FastMCP
 
+from . import __version__
 from .stations import (
     get_all_stations,
     get_station,
@@ -21,7 +22,7 @@ from .weather import (
     fetch_time_series_data,
 )
 
-mcp = FastMCP("jma-data-mcp")
+mcp = FastMCP("jma-data-mcp", version=__version__)
 READ_ONLY_ANNOTATIONS = {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True}
 
 

@@ -29,6 +29,11 @@ Before a maintainer authorizes a new release:
    the CA bundle to the validated build environment, and test HTTPS against JMA
    from the candidate. A source-environment test or offline smoke test alone
    does not verify the executable's TLS trust.
+   `scripts/verify_windows_bundle.py` now gates publication on matching embedded
+   Python/OpenSSL/CA bytes and package version metadata, `--version`, help, station
+   lookup and MCP stdio checks. The release job also requires live JMA HTTPS via
+   the candidate (`--https`), verifies tag/package version agreement, and publishes
+   `build-verification.json` beside the EXE/checksum. CI runs the offline checks.
 5. Retain the source SHA, runtime/dependency versions, CI results and candidate
    SHA256 for review. Only after explicit release approval create a new version
    tag/release. The `v*` tag push triggers publication and uploads the EXE and
@@ -39,6 +44,12 @@ use this repository's lock. Existing source environments must be reinstalled or
 synced; existing EXEs must be replaced. Review installer-bundled pip/uv trust and
 OS/custom CA stores separately, including `SSL_CERT_FILE` / `SSL_CERT_DIR` or other
 trust overrides. Updating application certifi cannot repair those stores.
+
+For the nonbreaking v0.3.1 security release, package metadata and `__version__`
+must both read 0.3.1. Download the new EXE from its new release, verify it against
+`SHA256SUMS.txt` and `build-verification.json`, and check `--version`. The standalone
+EXE has no separate installer or signing step in the established workflow; its
+checksum verifies integrity, not publisher identity. Leave v0.3.0 assets unchanged.
 
 References:
 
