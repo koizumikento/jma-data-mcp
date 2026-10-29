@@ -15,7 +15,7 @@ Before a maintainer authorizes a new release:
 2. Use the Python version in `.python-version` for both CI and the release build.
    The current pin is 3.13.17, an October 21 security release. This is a build
    baseline, not a claim that all Python vulnerabilities are fixed. Source users
-   still manage their own supported Python runtime (the package supports 3.10+).
+   still manage their own supported Python runtime (the package supports 3.11+).
 3. In a fresh Windows environment run `uv lock --check`, `uv sync --frozen`,
    `uv run --no-sync pytest -m "not integration"`, Ruff, Mypy and `uv build`.
    `tests/test_build_security.py` checks the installed certifi floor, package

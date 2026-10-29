@@ -4,7 +4,7 @@
 
 ## 実行
 
-Python 3.10+ と [`uv`](https://docs.astral.sh/uv/) が必要です。
+Python 3.11+ と [`uv`](https://docs.astral.sh/uv/) が必要です。
 
 ```bash
 uvx --from git+https://github.com/koizumikento/jma-data-mcp.git@master jma-data-mcp
