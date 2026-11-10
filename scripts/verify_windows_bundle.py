@@ -20,6 +20,8 @@ from fastmcp import Client
 from fastmcp.client.transports import StdioTransport
 from PyInstaller.archive.readers import CArchiveReader
 
+from jma_data_mcp.server import mcp
+
 
 def verify_archive(executable: Path) -> dict[str, str]:
     """Compare bundled trust/runtime bytes and package metadata with this build."""
@@ -69,8 +71,14 @@ async def smoke_test(executable: Path, https: bool) -> None:
     async with Client(transport, mode="legacy", timeout=60) as client:
         if client.server_info is None or client.server_info.version != version("jma-data-mcp"):
             raise ValueError("Executable MCP version mismatch")
-        if len(await client.list_tools()) != 11:
-            raise ValueError("Executable MCP tool discovery failed")
+        expected_tools = {tool.name for tool in await mcp.list_tools()}
+        executable_tools = {tool.name for tool in await client.list_tools()}
+        if executable_tools != expected_tools:
+            raise ValueError(
+                "Executable MCP tool discovery failed. "
+                f"Missing: {sorted(expected_tools - executable_tools)}. "
+                f"Unexpected: {sorted(executable_tools - expected_tools)}."
+            )
         station_result = await client.call_tool("get_station_info", {"code": "44132"})
         if station_result.data["code"] != "44132":
             raise ValueError("Executable MCP station lookup failed")
