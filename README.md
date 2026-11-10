@@ -1,6 +1,6 @@
 # JMA Data MCP
 
-気象庁の観測・天気予報・気候統計を調べ、直近に配信された気象警報・注意報を確認できるMCPサーバーです。全国1,286観測所のスナップショットを同梱し、地点名や座標からAMeDAS観測所を検索できます。
+気象庁の観測・天気予報・気候統計・台風を調べ、直近に配信された気象警報・注意報を確認できるMCPサーバーです。全国1,286観測所のスナップショットを同梱し、地点名や座標からAMeDAS観測所を検索できます。
 
 [MCP登録](#mcpクライアントに登録する) · [CLI](#cliで使う) · [Pythonライブラリ](#pythonライブラリとして使う)
 
@@ -79,6 +79,8 @@ print(asyncio.run(get_climate_normals("44132", month=8)))
 - 観測・予報: `get_current_weather`、`get_weather_by_location`、`get_forecast`、`list_prefectures`
 - 過去・時系列: `get_historical_weather`、`get_weather_time_series`
 - 気候統計: `get_climate_normals`、`get_japan_climate_anomalies`
+- 台風位置表: `list_typhoons`、`get_typhoon_track`
+- ベストトラック: `list_best_track_typhoons`、`get_best_track`
 - 警報・注意報の配信履歴: `list_weather_warning_reports`
 
 | 調べたいこと | 取得できる範囲 |
@@ -90,10 +92,34 @@ print(asyncio.run(get_climate_normals("44132", month=8)))
 
 実行中のプロセスでは、平年値のZIPを1時間、警報・注意報の配信履歴を1分キャッシュします。
 
+## 台風を調べる
+
+台風位置表は2001年以降、ベストトラックは1951年以降が対象です。経路の時刻はUTC、風速はノットで返します。
+
+```sh
+uv run jma-data-mcp typhoon list --year 2025
+uv run jma-data-mcp typhoon track --year 2025 --number 1
+uv run jma-data-mcp typhoon best-track --year 1951 --number 1
+uv run jma-data-mcp typhoon refresh --year 2025
+```
+
+Pythonでは `jma_data_mcp.api` から同じ名前の関数をインポートできます。
+
+```python
+import asyncio
+from jma_data_mcp.api import get_best_track
+
+print(asyncio.run(get_best_track(year=1951, number=1)))
+```
+
+台風位置表は今年分を24時間、過去年を30日ごとに確認します。ベストトラックは24時間ごとに確認します。更新に失敗した場合は前回のデータと更新失敗の印を返します。[入力・結果・キャッシュ・出典](docs/typhoons.md)
+
+`jma-typhoon-mcp` コマンドと `jma_typhoon_mcp` モジュールもこのパッケージに含まれます。キャッシュは同じ保存先を使い、`JMA_TYPHOON_CACHE_DIR` で指定できます。
+
 ## Sitesでの実行
 
 [`sites/`](sites/README.md) に認証付き `POST /mcp` Worker ESM adapterとbuild設定があります。
-全14ツールはPythonバックエンドで実行します。Sitesとは別にHTTPS接続可能なPythonホストが必要です。
+全18ツールはPythonバックエンドで実行します。Sitesとは別にHTTPS接続可能なPythonホストが必要です。
 stdio・CLI・Python libraryはそのまま利用できます。設定、secret名、再現手順、検証範囲は上記手順を参照してください。
 
 ## データ出典・利用条件

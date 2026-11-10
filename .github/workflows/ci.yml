@@ -94,5 +94,5 @@ jobs:
           from jma_data_mcp.stations import load_stations
 
           assert len(load_stations()) == 1286
-          assert len(asyncio.run(mcp.list_tools())) == 14
+          assert len(asyncio.run(mcp.list_tools())) == 18
           PY

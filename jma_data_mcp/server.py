@@ -5,6 +5,13 @@ from typing import Optional
 
 from fastmcp import FastMCP
 
+from jma_typhoon_mcp.client import (
+    get_best_track,
+    get_typhoon_track,
+    list_best_track_typhoons,
+    list_typhoons,
+)
+
 from . import __version__
 from .climate_anomalies import ClimateMetric, fetch_japan_climate_anomalies
 from .normals import fetch_climate_normals
@@ -349,6 +356,13 @@ async def list_weather_warning_reports(
         limit: Maximum number of reports, 1–50. Newest reports are returned first.
     """
     return await fetch_weather_warning_reports(office, bulletin_code, limit)
+
+
+# Typhoon tools share the same public functions and cache as the CLI.
+mcp.tool(annotations={**READ_ONLY_ANNOTATIONS, "openWorldHint": True})(list_typhoons)
+mcp.tool(annotations={**READ_ONLY_ANNOTATIONS, "openWorldHint": True})(get_typhoon_track)
+mcp.tool(annotations={**READ_ONLY_ANNOTATIONS, "openWorldHint": True})(list_best_track_typhoons)
+mcp.tool(annotations={**READ_ONLY_ANNOTATIONS, "openWorldHint": True})(get_best_track)
 
 
 def main() -> None:

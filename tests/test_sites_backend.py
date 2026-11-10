@@ -17,10 +17,13 @@ from fastmcp.client.transports import StreamableHttpTransport
 from mcp_types import DiscoverResult
 
 from jma_data_mcp import normals, server, sites_backend, warning_reports, weather
+from jma_typhoon_mcp import client as typhoon_client
+from jma_typhoon_mcp._cache import Snapshot
 from tests.public_data_fixtures import public_files
 
 ROOT = Path(__file__).resolve().parents[1]
 JMA_NETWORK_TOOLS = {
+    "list_typhoons", "get_typhoon_track", "list_best_track_typhoons", "get_best_track",
     "get_current_weather", "get_weather_by_location", "get_forecast",
     "get_historical_weather", "get_weather_time_series",
     "get_climate_normals", "get_japan_climate_anomalies", "list_weather_warning_reports",
@@ -55,6 +58,25 @@ async def test_worker_backend_contract(monkeypatch, mode):
     monkeypatch.setenv("JMA_BACKEND_TOKEN", token)
     raw_weather = json.loads((ROOT / "tests/fixtures/sites-weather.json").read_text())
     fixed_time = datetime(2026, 10, 10, 12, 20, tzinfo=weather.JST)
+
+    async def typhoon_snapshot(year, *, force=False):
+        return Snapshot(
+            {
+                "data_as_of": fixed_time.isoformat(),
+                "source_urls": ["https://example.test/typhoon"],
+                "tracks": {
+                    "0101": {
+                        "year": 2001, "typhoon_id": "0101", "number": 1,
+                        "name": "SYNTHETIC", "revision_date": "2001-01-01", "positions": [],
+                    }
+                },
+            },
+            fixed_time,
+            fixed_time,
+        )
+
+    monkeypatch.setattr(typhoon_client, "_snapshot", typhoon_snapshot)
+    monkeypatch.setattr(typhoon_client, "_best_track_snapshot", typhoon_snapshot)
     monkeypatch.setattr(weather, "get_latest_data_time", lambda: fixed_time)
     fetched_urls = []
     public_data = public_files()
@@ -102,6 +124,11 @@ async def test_worker_backend_contract(monkeypatch, mode):
         worker_url = f"http://127.0.0.1:{int(port_line)}/mcp"
         transport = StreamableHttpTransport(worker_url, headers={"oai-authenticated-user-id": "fixture-owner"})
         cases = [
+            ("list_typhoons", {"year": 2001}),
+            ("get_typhoon_track", {"year": 2001, "number": 1}),
+            ("list_best_track_typhoons", {"year": 2001}),
+            ("get_best_track", {"year": 2001, "number": 1}),
+            ("get_best_track", {"year": 1900, "number": 1}),
             ("get_station_info", {"code": "44132"}),
             ("get_station_info", {"code": "unknown"}),
             ("search_stations", {"name": "Tokyo"}),
@@ -138,7 +165,7 @@ async def test_worker_backend_contract(monkeypatch, mode):
             if mode == "auto":
                 assert remote.protocol_version == "2026-07-28"
             local_tools, remote_tools = await local.list_tools(), await remote.list_tools()
-            assert len(remote_tools) == 14
+            assert len(remote_tools) == 18
             assert [t.model_dump() for t in remote_tools] == [t.model_dump() for t in local_tools]
             assert JMA_NETWORK_TOOLS <= {tool.name for tool in remote_tools}
             for tool in remote_tools:
@@ -202,7 +229,7 @@ async def test_worker_backend_contract(monkeypatch, mode):
             listed_result = listed.json()["result"]
             if mode == "auto":
                 assert listed_result["resultType"] == "complete"
-            assert len(listed_result["tools"]) == 14
+            assert len(listed_result["tools"]) == 18
             for tool in listed_result["tools"]:
                 assert tool["annotations"] == {
                     "readOnlyHint": True, "destructiveHint": False, "idempotentHint": True,

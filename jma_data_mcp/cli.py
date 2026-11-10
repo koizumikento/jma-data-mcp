@@ -8,6 +8,8 @@ import json
 from collections.abc import Callable, Coroutine
 from typing import Any, NoReturn
 
+from jma_typhoon_mcp.client import refresh_cache
+
 from . import __version__, server
 
 JsonDict = dict[str, Any]
@@ -133,6 +135,21 @@ def _build_parser() -> argparse.ArgumentParser:
     warning_list.add_argument("--limit", type=int, default=10, help="Max reports, 1–50")
     warning_list.set_defaults(handler=_warning_list)
 
+    typhoon_parser = subparsers.add_parser("typhoon", help="Typhoon positions and historical best tracks")
+    typhoon_commands = typhoon_parser.add_subparsers(dest="typhoon_command", required=True)
+    for command_name, handler in (
+        ("list", _typhoon_list),
+        ("track", _typhoon_track),
+        ("best-track-list", _best_track_list),
+        ("best-track", _best_track),
+        ("refresh", _typhoon_refresh),
+    ):
+        command = typhoon_commands.add_parser(command_name)
+        command.add_argument("--year", type=int, required=True)
+        if command_name in {"track", "best-track"}:
+            command.add_argument("--number", type=int, required=True)
+        command.set_defaults(handler=handler)
+
     return parser
 
 
@@ -249,3 +266,23 @@ async def _warning_list(args: argparse.Namespace) -> JsonDict:
         bulletin_code=args.bulletin_code,
         limit=args.limit,
     )
+
+
+async def _typhoon_list(args: argparse.Namespace) -> JsonDict:
+    return await server.list_typhoons(year=args.year)
+
+
+async def _typhoon_track(args: argparse.Namespace) -> JsonDict:
+    return await server.get_typhoon_track(year=args.year, number=args.number)
+
+
+async def _best_track_list(args: argparse.Namespace) -> JsonDict:
+    return await server.list_best_track_typhoons(year=args.year)
+
+
+async def _best_track(args: argparse.Namespace) -> JsonDict:
+    return await server.get_best_track(year=args.year, number=args.number)
+
+
+async def _typhoon_refresh(args: argparse.Namespace) -> JsonDict:
+    return await refresh_cache(year=args.year)

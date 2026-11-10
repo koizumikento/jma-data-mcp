@@ -78,7 +78,7 @@ async def test_mcp_weather_validation_and_response(monkeypatch, mode):
     client_factory = httpx.AsyncClient
     monkeypatch.setattr(weather.httpx, "AsyncClient", lambda: client_factory(transport=transport))
     async with Client(server.mcp, mode=mode) as client:
-        assert len(await client.list_tools()) == 14
+        assert len(await client.list_tools()) == 18
         result = await client.call_tool("get_current_weather", {"station_code": "44132"})
         assert result.data["weather"]["temperature"] == {"value": 21.5, "unit": "℃"}
         assert result.data["station_info"]["name"]["ja"] == "東京"
@@ -94,6 +94,6 @@ async def test_cli_stdio_initialization():
         env={"PYTHONUTF8": "1"},
     )
     async with Client(transport, mode="legacy", timeout=10) as client:
-        assert len(await client.list_tools()) == 14
+        assert len(await client.list_tools()) == 18
         result = await client.call_tool("get_station_info", {"code": "44132"})
         assert result.data["name"]["ja"] == "東京"
