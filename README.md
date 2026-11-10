@@ -129,6 +129,4 @@ Sites契約検証にはNode 22+も必要です。テストではJMA取得をfixt
 
 ## License
 
-Windows EXE: [release security checks and outstanding distribution work](docs/releasing.md).
-
 [MIT](LICENSE)
