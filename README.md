@@ -29,6 +29,24 @@ MCPクライアント設定例:
 
 引数なし、または `serve` でMCPサーバーを起動します。`station`、`weather`、`forecast`、`history` サブコマンドからCLIとしても利用できます。
 
+## CLIとPythonライブラリ
+
+リポジトリのルートで実行します。観測所情報の例です。
+
+```bash
+uv run jma-data-mcp station get --code 44132
+```
+
+Pythonからは `jma_data_mcp.api` の非同期関数を呼び出せます。
+
+```python
+import asyncio
+
+from jma_data_mcp.api import get_station_info
+
+print(asyncio.run(get_station_info("44132")))
+```
+
 ## MCP tools
 
 - 観測所: `get_station_info`、`search_stations`、`search_nearby_stations`、`get_stations_of_type`、`list_stations`
