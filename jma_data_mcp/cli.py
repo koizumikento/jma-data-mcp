@@ -112,6 +112,27 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     history_series.set_defaults(handler=_history_series)
 
+    climate_parser = subparsers.add_parser("climate", help="Climate normals and long-term statistics")
+    climate_subparsers = climate_parser.add_subparsers(dest="climate_command", required=True)
+    climate_normals = climate_subparsers.add_parser("normals", help="Get AMeDAS climate normals")
+    climate_normals.add_argument("--station-code", required=True, help="Five-digit AMeDAS station code")
+    climate_normals.add_argument("--month", type=int, choices=range(1, 13), help="Month to include")
+    climate_normals.set_defaults(handler=_climate_normals)
+
+    climate_anomalies = climate_subparsers.add_parser("anomalies", help="Get Japan-wide annual climate anomalies")
+    climate_anomalies.add_argument("--metric", required=True, choices=["temperature", "precipitation"])
+    climate_anomalies.add_argument("--start-year", type=int, default=1898, help="First year to include")
+    climate_anomalies.add_argument("--end-year", type=int, help="Last year to include")
+    climate_anomalies.set_defaults(handler=_climate_anomalies)
+
+    warning_parser = subparsers.add_parser("warnings", help="Recent JMA warning bulletins")
+    warning_subparsers = warning_parser.add_subparsers(dest="warning_command", required=True)
+    warning_list = warning_subparsers.add_parser("list", help="List recent warning bulletin publications")
+    warning_list.add_argument("--office", help="Publishing office substring")
+    warning_list.add_argument("--bulletin-code", help="Bulletin type, VPWW53 through VPWW61")
+    warning_list.add_argument("--limit", type=int, default=10, help="Max reports, 1–50")
+    warning_list.set_defaults(handler=_warning_list)
+
     return parser
 
 
@@ -207,4 +228,24 @@ async def _history_series(args: argparse.Namespace) -> JsonDict:
         station_code=args.station_code,
         hours=args.hours,
         interval_minutes=args.interval_minutes,
+    )
+
+
+async def _climate_normals(args: argparse.Namespace) -> JsonDict:
+    return await server.get_climate_normals(station_code=args.station_code, month=args.month)
+
+
+async def _climate_anomalies(args: argparse.Namespace) -> JsonDict:
+    return await server.get_japan_climate_anomalies(
+        metric=args.metric,
+        start_year=args.start_year,
+        end_year=args.end_year,
+    )
+
+
+async def _warning_list(args: argparse.Namespace) -> JsonDict:
+    return await server.list_weather_warning_reports(
+        office=args.office,
+        bulletin_code=args.bulletin_code,
+        limit=args.limit,
     )

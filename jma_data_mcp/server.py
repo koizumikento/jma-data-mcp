@@ -6,6 +6,8 @@ from typing import Optional
 from fastmcp import FastMCP
 
 from . import __version__
+from .climate_anomalies import ClimateMetric, fetch_japan_climate_anomalies
+from .normals import fetch_climate_normals
 from .stations import (
     get_all_stations,
     get_station,
@@ -13,6 +15,7 @@ from .stations import (
     search_stations_by_location,
     search_stations_by_name,
 )
+from .warning_reports import fetch_weather_warning_reports
 from .weather import (
     AREA_CODES,
     JST,
@@ -298,6 +301,54 @@ async def get_weather_time_series(
         time_series_data["station_info"] = station_info
 
     return time_series_data
+
+
+@mcp.tool(annotations={**READ_ONLY_ANNOTATIONS, "openWorldHint": True})
+async def get_climate_normals(station_code: str, month: int | None = None) -> dict:
+    """Get JMA's monthly and annual 1991–2020 climate normals for an AMeDAS station.
+
+    Args:
+        station_code: Five-digit AMeDAS code (e.g., '44132' for Tokyo).
+        month: Limit monthly results to 1–12. Annual normals are always included.
+    """
+    return await fetch_climate_normals(station_code, month)
+
+
+@mcp.tool(annotations={**READ_ONLY_ANNOTATIONS, "openWorldHint": True})
+async def get_japan_climate_anomalies(
+    metric: ClimateMetric,
+    start_year: int = 1898,
+    end_year: int | None = None,
+) -> dict:
+    """Get Japan-wide annual temperature or precipitation anomalies from JMA.
+
+    The baseline is 1991–2020. This series represents national climate statistics.
+
+    Args:
+        metric: 'temperature' for annual mean temperature or 'precipitation' for annual precipitation.
+        start_year: First year to include (1898 or later).
+        end_year: Last year to include. Omit to include all available years through the latest release.
+    """
+    return await fetch_japan_climate_anomalies(metric, start_year, end_year)
+
+
+@mcp.tool(annotations={**READ_ONLY_ANNOTATIONS, "openWorldHint": True})
+async def list_weather_warning_reports(
+    office: str | None = None,
+    bulletin_code: str | None = None,
+    limit: int = 10,
+) -> dict:
+    """List recent JMA weather warning and advisory bulletins in the hourly Atom feed.
+
+    Reports include publications and cancellations. For active warnings or emergency
+    decisions, use the JMA warning status page returned with the results.
+
+    Args:
+        office: Optional substring of the publishing office (e.g., '松山').
+        bulletin_code: Optional JMA bulletin type from VPWW53 through VPWW61.
+        limit: Maximum number of reports, 1–50. Newest reports are returned first.
+    """
+    return await fetch_weather_warning_reports(office, bulletin_code, limit)
 
 
 def main() -> None:

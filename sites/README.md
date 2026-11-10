@@ -3,13 +3,13 @@
 This directory is a **Sites Worker ESM package**, with stateless `POST /mcp`.
 It forwards MCP messages to the existing Python implementation. A separate
 Python backend is required; Sites alone does not run this package's Python code.
-All eleven tools, schemas, descriptions, structured/text results, station
+All fourteen tools, schemas, descriptions, structured/text results, station
 snapshot, pagination, defaults, domain errors, units, timestamps and JMA source
-data stay owned by `jma_data_mcp/server.py`, `stations.py` and `weather.py`.
+data stay owned by the `jma_data_mcp` Python package.
 No JMA API key, writable storage, D1, R2 or new Node dependencies are needed.
-All eleven tools declare the standard MCP `readOnlyHint: true`,
+All fourteen tools declare the standard MCP `readOnlyHint: true`,
 `destructiveHint: false`, and `idempotentHint: true` annotations. The six
-station/area snapshot tools use `openWorldHint: false`; the five weather tools
+station/area snapshot tools use `openWorldHint: false`; the eight network tools
 use `openWorldHint: true` because they fetch public JMA HTTP data. These are
 client hints, not authorization controls; changing observations do not make
 repeated reads mutate the environment.
@@ -28,7 +28,7 @@ and can also forward SSE. It does not add sessions, retries or truncate results.
 
 ## Local checks (no real JMA or Sites calls)
 
-From the repository root, with Python 3.10+ / `uv` and Node 22+ installed:
+From the repository root, with Python 3.11+ / `uv` and Node 22+ installed:
 
 ```sh
 uv sync --frozen
@@ -55,7 +55,7 @@ results are compared against the original in-process server. This verifies
 transport/contract behavior, not model routing or a hosted client connection.
 The real ASGI tests also assert the serialized discovery keys
 `supportedVersions`, `resultType: "complete"`, and server identity metadata,
-plus all eleven tool annotations on modern and legacy `tools/list` responses
+plus all fourteen tool annotations on modern and legacy `tools/list` responses
 and a modern `tools/call` result. A bare `server/discover` with no modern
 request metadata does not establish whether the modern protocol works.
 
@@ -66,6 +66,7 @@ request metadata does not establish whether the modern protocol works.
 | RO-03 | `list_stations` → `get_station_info`: offset/limit and terminal page against the same snapshot |
 | RO-04 | `list_prefectures` → `get_forecast`: existing area keys, raw issuing office/time, unknown prefecture error |
 | RO-05 | `get_current_weather` → `get_historical_weather` → `get_weather_time_series`: zero vs missing, units/JST, invalid date/interval, partial 404 retention and full 1,008-point range |
+| RO-06 | `get_climate_normals`, `get_japan_climate_anomalies`, `list_weather_warning_reports`: source URLs, statistics and report metadata |
 
 The deterministic tests cover each surface and compare raw results; this table
 also defines later agent acceptance tasks. A clean-context model evaluation and
@@ -156,7 +157,7 @@ When publication is authorized, use the official Sites workflow:
 5. Save/deploy the returned unchanged archive with the native Sites tools and
    preserve the private audience. Reuse the Site's App/plugin on updates.
    Sites owns OAuth, sign-in, and connection authentication.
-6. Separately verify authenticated `initialize`, `tools/list` (all eleven names
+6. Separately verify authenticated `initialize`, `tools/list` (all fourteen names
    and schemas), a station lookup, and mocked or authorized JMA-backed calls
    from the target client. Deployment or plugin installation alone is not
    evidence of working discovery/calls. Keep source SHA and archive identity.

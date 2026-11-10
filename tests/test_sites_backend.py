@@ -16,12 +16,14 @@ from fastmcp import Client
 from fastmcp.client.transports import StreamableHttpTransport
 from mcp_types import DiscoverResult
 
-from jma_data_mcp import server, sites_backend, weather
+from jma_data_mcp import normals, server, sites_backend, warning_reports, weather
+from tests.public_data_fixtures import public_files
 
 ROOT = Path(__file__).resolve().parents[1]
 JMA_NETWORK_TOOLS = {
     "get_current_weather", "get_weather_by_location", "get_forecast",
     "get_historical_weather", "get_weather_time_series",
+    "get_climate_normals", "get_japan_climate_anomalies", "list_weather_warning_reports",
 }
 
 
@@ -55,12 +57,17 @@ async def test_worker_backend_contract(monkeypatch, mode):
     fixed_time = datetime(2026, 10, 10, 12, 20, tzinfo=weather.JST)
     monkeypatch.setattr(weather, "get_latest_data_time", lambda: fixed_time)
     fetched_urls = []
+    public_data = public_files()
+    monkeypatch.setattr(normals, "_archive_cache", None)
+    monkeypatch.setattr(warning_reports, "_feed_cache", None)
     retention_enabled = True
 
     def upstream(request):
         fetched_urls.append(str(request.url))
-        assert request.url.host == "www.jma.go.jp"
         assert "authorization" not in request.headers
+        if request.url.host == "www.data.jma.go.jp":
+            return httpx.Response(200, content=public_data[request.url.path])
+        assert request.url.host == "www.jma.go.jp"
         if "/forecast/" in request.url.path:
             return httpx.Response(200, json=[{"publishingOffice": "気象庁", "reportDatetime": fixed_time.isoformat(), "timeSeries": []}])
         if retention_enabled and "20261010100000" in request.url.path:
@@ -70,7 +77,7 @@ async def test_worker_backend_contract(monkeypatch, mode):
         return httpx.Response(200, json=raw_weather)
 
     client_factory = httpx.AsyncClient
-    monkeypatch.setattr(weather.httpx, "AsyncClient", lambda: client_factory(transport=httpx.MockTransport(upstream)))
+    monkeypatch.setattr(weather.httpx, "AsyncClient", lambda **kwargs: client_factory(transport=httpx.MockTransport(upstream), **kwargs))
     app = sites_backend.create_app()
     listener = socket.socket()
     listener.bind(("127.0.0.1", 0))
@@ -123,12 +130,15 @@ async def test_worker_backend_contract(monkeypatch, mode):
             ("get_station_info", {}),
             ("get_station_info", {"code": {"unexpected": "object"}}),
             ("get_historical_weather", {"station_code": "44132", "target_datetime": "2026-10-10 09:00"}),
+            ("get_climate_normals", {"station_code": "44132", "month": 1}),
+            ("get_japan_climate_anomalies", {"metric": "temperature", "end_year": 1898}),
+            ("list_weather_warning_reports", {"office": "気象庁", "limit": 1}),
         ]
         async with Client(server.mcp, mode=mode) as local, Client(transport, mode=mode, timeout=30) as remote:
             if mode == "auto":
                 assert remote.protocol_version == "2026-07-28"
             local_tools, remote_tools = await local.list_tools(), await remote.list_tools()
-            assert len(remote_tools) == 11
+            assert len(remote_tools) == 14
             assert [t.model_dump() for t in remote_tools] == [t.model_dump() for t in local_tools]
             assert JMA_NETWORK_TOOLS <= {tool.name for tool in remote_tools}
             for tool in remote_tools:
@@ -142,6 +152,8 @@ async def test_worker_backend_contract(monkeypatch, mode):
                 expected = await local.call_tool(name, arguments, raise_on_error=False)
                 actual = await remote.call_tool(name, arguments, raise_on_error=False)
                 assert actual.is_error == expected.is_error, name
+                if name in {"get_climate_normals", "get_japan_climate_anomalies", "list_weather_warning_reports"}:
+                    assert not actual.is_error, name
                 assert actual.structured_content == expected.structured_content, name
                 assert actual.content == expected.content, name
                 if arguments.get("hours") == 168:
@@ -190,7 +202,7 @@ async def test_worker_backend_contract(monkeypatch, mode):
             listed_result = listed.json()["result"]
             if mode == "auto":
                 assert listed_result["resultType"] == "complete"
-            assert len(listed_result["tools"]) == 11
+            assert len(listed_result["tools"]) == 14
             for tool in listed_result["tools"]:
                 assert tool["annotations"] == {
                     "readOnlyHint": True, "destructiveHint": False, "idempotentHint": True,
