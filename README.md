@@ -116,6 +116,12 @@ print(asyncio.run(get_best_track(year=1951, number=1)))
 
 `jma-typhoon-mcp` コマンドと `jma_typhoon_mcp` モジュールもこのパッケージに含まれます。キャッシュは同じ保存先を使い、`JMA_TYPHOON_CACHE_DIR` で指定できます。
 
+### jma-typhoon-mcpから切り替える
+
+同じPython環境に `jma-typhoon-mcp` を追加している場合は、先に `uv remove jma-typhoon-mcp` で外してください。次に、このREADMEの「Pythonライブラリとして使う」の手順で `jma-data-mcp` を追加します。
+
+MCPクライアントでは元の台風用の登録を削除し、このREADMEの「MCPクライアントに登録する」の設定を使います。Codexでは `codex mcp list` で登録名を確認し、`codex mcp remove 登録名` で元の登録を削除できます。
+
 ## Sitesでの実行
 
 [`sites/`](sites/README.md) に認証付き `POST /mcp` Worker ESM adapterとbuild設定があります。
