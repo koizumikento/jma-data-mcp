@@ -2,15 +2,28 @@
 
 気象庁の観測・天気予報・気候統計を調べ、直近に配信された気象警報・注意報を確認できるMCPサーバーです。全国1,286観測所のスナップショットを同梱し、地点名や座標からAMeDAS観測所を検索できます。
 
-## 実行
+[MCP登録](#mcpクライアントに登録する) · [CLI](#cliで使う) · [Pythonライブラリ](#pythonライブラリとして使う)
 
-Python 3.11+ と [`uv`](https://docs.astral.sh/uv/) が必要です。
+## MCPクライアントに登録する
 
-```bash
-uvx --from git+https://github.com/koizumikento/jma-data-mcp.git@master jma-data-mcp
+Python 3.11以上、[uv](https://docs.astral.sh/uv/) と Git が必要です。APIキーは不要です。
+
+### Codex
+
+```sh
+codex mcp add jma-data -- uvx --python 3.12 --from git+https://github.com/koizumikento/jma-data-mcp.git@master jma-data-mcp
+codex mcp list
 ```
 
-MCPクライアント設定例:
+新しいセッションの `/mcp` で接続を確認します。デスクトップ版では設定の「MCP servers」でSTDIOを選び、下のJSONと同じコマンド・引数を入力して保存し、再起動します。 [OpenAI公式のMCP設定](https://learn.chatgpt.com/docs/extend/mcp)
+
+### Claude Desktop / Cursor
+
+- Claude Desktop（Windows） `%APPDATA%/Claude/claude_desktop_config.json`
+- Claude Desktop（macOS） `~/Library/Application Support/Claude/claude_desktop_config.json`
+- Cursor `.cursor/mcp.json`（プロジェクト内）
+
+既存の `mcpServers` に項目を追加し、保存後にクライアントを再起動します。`uvx` が見つからない場合は `command` に実行ファイルの絶対パスを指定してください。
 
 ```json
 {
@@ -18,6 +31,8 @@ MCPクライアント設定例:
     "jma-data": {
       "command": "uvx",
       "args": [
+        "--python",
+        "3.12",
         "--from",
         "git+https://github.com/koizumikento/jma-data-mcp.git@master",
         "jma-data-mcp"
@@ -27,20 +42,28 @@ MCPクライアント設定例:
 }
 ```
 
-引数なし、または `serve` でMCPサーバーを起動します。`station`、`weather`、`forecast`、`history`、`climate`、`warnings` はCLI用のサブコマンドです。
+## CLIで使う
 
-## CLIとPythonライブラリ
+クローンせずに実行できます。結果は標準出力に出ます。
 
-リポジトリのルートで、次の例を実行できます。
-
-```bash
-uv run jma-data-mcp station get --code 44132
-uv run jma-data-mcp climate normals --station-code 44132 --month 8
-uv run jma-data-mcp climate anomalies --metric temperature --start-year 2000
-uv run jma-data-mcp warnings list --office 松山 --limit 5
+```sh
+uvx --python 3.12 --from git+https://github.com/koizumikento/jma-data-mcp.git@master jma-data-mcp station get --code 44132
+uvx --python 3.12 --from git+https://github.com/koizumikento/jma-data-mcp.git@master jma-data-mcp climate normals --station-code 44132 --month 8
+uvx --python 3.12 --from git+https://github.com/koizumikento/jma-data-mcp.git@master jma-data-mcp climate anomalies --metric temperature --start-year 2000
+uvx --python 3.12 --from git+https://github.com/koizumikento/jma-data-mcp.git@master jma-data-mcp warnings list --office 松山 --limit 5
 ```
 
-Pythonからは `jma_data_mcp.api` の非同期関数を呼び出せます。
+## Pythonライブラリとして使う
+
+自分のPythonプロジェクト（`pyproject.toml` があるディレクトリ）で依存関係に追加します。
+
+```sh
+uv add "git+https://github.com/koizumikento/jma-data-mcp.git@master"
+```
+
+次のコードを `example.py` に保存し、同じディレクトリで `uv run python example.py` を実行します。
+
+`jma_data_mcp.api` の非同期関数を使います。
 
 ```python
 import asyncio
